@@ -87,7 +87,7 @@ fn tower_attack_system(
     mut sfx_writer: MessageWriter<PlaySfxMsg>,
     mut popup_writer: MessageWriter<SpawnPopupMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     if dt <= 0.0 {
         return;
     }
@@ -348,8 +348,8 @@ fn tower_attack_system(
                             start: current_pos,
                             end: hop_pos + Vec3::Y * 0.6,
                             color: proj_color,
-                            timer: 0.16,
-                            max_timer: 0.16,
+                            timer: 0.32,
+                            max_timer: 0.32,
                         },
                     ));
                     vfx_writer.write(SpawnVfxMsg {
@@ -420,8 +420,8 @@ fn tower_attack_system(
                             start: muzzle_pos,
                             end: e_pos + Vec3::Y * 0.6,
                             color: proj_color,
-                            timer: 0.22,
-                            max_timer: 0.22,
+                            timer: 0.32,
+                            max_timer: 0.32,
                         },
                     ));
                     vfx_writer.write(SpawnVfxMsg {
@@ -541,7 +541,7 @@ fn move_projectiles_system(
     mut sfx_writer: MessageWriter<PlaySfxMsg>,
     mut popup_writer: MessageWriter<SpawnPopupMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     if dt <= 0.0 {
         return;
     }
@@ -780,7 +780,7 @@ fn tick_status_effects_and_hazards(
     mut towers: Query<&mut Tower, Without<PendingDespawn>>,
     mut damage_writer: MessageWriter<DamageAppliedMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     if dt <= 0.0 {
         return;
     }

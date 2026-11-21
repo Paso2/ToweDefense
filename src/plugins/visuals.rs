@@ -119,6 +119,14 @@ struct ReclaimOverlayTile {
     coord: TileCoord,
 }
 
+#[derive(Component)]
+struct ShockwaveRingVfx {
+    timer: f32,
+    max_timer: f32,
+    start_radius: f32,
+    end_radius: f32,
+}
+
 #[derive(Resource, Default)]
 pub struct VisualCache {
     pub initialized: bool,
@@ -1636,7 +1644,7 @@ fn animate_towers(
     towers: Query<(&Tower, &GlobalTransform), Without<PendingDespawn>>,
     targets: Query<&GlobalTransform, Without<PendingDespawn>>,
 ) {
-    let dt = time.delta_secs();
+    let dt = time.delta_secs().min(0.05);
     let elapsed = time.elapsed_secs();
 
     for (head, mut tf) in &mut heads {
@@ -2188,7 +2196,7 @@ fn animate_map_accents_and_torches(
     cache: Res<VisualCache>,
     existing_reclaim: Query<(Entity, &ReclaimOverlayTile)>,
 ) {
-    let dt = time.delta_secs();
+    let dt = time.delta_secs().min(0.05);
     let elapsed = time.elapsed_secs();
 
     for (ring, mut tf) in &mut rings {
@@ -2239,11 +2247,14 @@ fn animate_map_accents_and_torches(
 
 fn spawn_projectile_visuals(
     mut commands: Commands,
-    projectiles: Query<(Entity, &Projectile), (Without<ProjectileVisualAdded>, Without<PendingDespawn>)>,
+    mut projectiles: Query<
+        (Entity, &Projectile, &mut Transform),
+        (Without<ProjectileVisualAdded>, Without<PendingDespawn>),
+    >,
     mut cache: ResMut<VisualCache>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, proj) in &projectiles {
+    for (entity, proj, mut tf) in &mut projectiles {
         let Ok(mut ec) = commands.get_entity(entity) else {
             continue;
         };
@@ -2251,17 +2262,22 @@ fn spawn_projectile_visuals(
         let mat = cache.color_mat(
             &mut materials,
             proj.color,
-            0.20,
+            0.16,
             0.15,
-            Some(LinearRgba::rgb(s.red * 2.2, s.green * 2.2, s.blue * 2.2)),
+            Some(LinearRgba::rgb(s.red * 3.8, s.green * 3.8, s.blue * 3.8)),
         );
         let (mesh, scale) = if proj.is_heavy {
-            (cache.unit_sphere.clone(), Vec3::splat(0.32))
+            (cache.unit_sphere.clone(), Vec3::splat(0.40))
         } else if proj.splash_radius > 0.1 {
-            (cache.unit_sphere.clone(), Vec3::splat(0.24))
+            (cache.unit_sphere.clone(), Vec3::splat(0.30))
         } else {
-            (cache.bolt_mesh.clone(), Vec3::splat(0.85))
+            (cache.bolt_mesh.clone(), Vec3::splat(1.06))
         };
+
+        tf.scale = scale;
+        if (proj.target_pos - tf.translation).length_squared() > 0.001 {
+            tf.look_at(proj.target_pos, Vec3::Y);
+        }
 
         ec.insert((
             ProjectileVisualAdded,
@@ -2270,11 +2286,11 @@ fn spawn_projectile_visuals(
             Visibility::default(),
         ))
         .with_children(|p| {
-            // Small glowing core dot
+            // Bright emissive core dot
             p.spawn((
                 Mesh3d(cache.unit_sphere.clone()),
                 MeshMaterial3d(cache.mat_gold.clone()),
-                Transform::from_scale(scale * 0.45),
+                Transform::from_scale(Vec3::splat(0.45)),
             ));
         });
     }
@@ -2317,12 +2333,56 @@ fn handle_vfx_messages(
                     start: msg.pos,
                     end,
                     color: msg.color,
-                    timer: 0.18,
-                    max_timer: 0.18,
+                    timer: 0.24,
+                    max_timer: 0.24,
                 },
                 GameplayEntity,
             ));
             continue;
+        }
+
+        let s = msg.color.to_srgba();
+        let mat = cache.color_mat(
+            &mut materials,
+            msg.color,
+            0.22,
+            0.1,
+            Some(LinearRgba::rgb(s.red * 3.0, s.green * 3.0, s.blue * 3.0)),
+        );
+
+        let is_aoe_burst = matches!(
+            msg.kind,
+            VfxKind::FireExplosion
+                | VfxKind::SteamCloud
+                | VfxKind::IceShatter
+                | VfxKind::PoisonCloud
+        );
+
+        if is_aoe_burst {
+            let ring_col = msg.color.with_alpha(0.75);
+            let ring_mat = cache.color_mat(
+                &mut materials,
+                ring_col,
+                0.18,
+                0.05,
+                Some(LinearRgba::rgb(s.red * 3.4, s.green * 3.4, s.blue * 3.4)),
+            );
+            let end_r = (msg.radius.max(0.8) * 1.35).clamp(0.9, 3.2);
+            let ring_y = msg.pos.y.max(0.14);
+            commands.spawn((
+                Mesh3d(cache.thin_torus.clone()),
+                MeshMaterial3d(ring_mat),
+                Transform::from_xyz(msg.pos.x, ring_y, msg.pos.z)
+                    .with_scale(Vec3::new(0.35, 0.35, 0.35)),
+                Visibility::default(),
+                ShockwaveRingVfx {
+                    timer: 0.34,
+                    max_timer: 0.34,
+                    start_radius: 0.35,
+                    end_radius: end_r * 2.0,
+                },
+                GameplayEntity,
+            ));
         }
 
         if current_count >= MAX_ACTIVE_PARTICLES {
@@ -2330,30 +2390,22 @@ fn handle_vfx_messages(
         }
 
         let burst_count = match msg.kind {
-            VfxKind::FireExplosion | VfxKind::UpgradeBurst | VfxKind::EnemyDeath => 10,
-            VfxKind::IceShatter | VfxKind::PortalWarp => 8,
-            VfxKind::PoisonCloud | VfxKind::SteamCloud | VfxKind::BuildDust => 6,
+            VfxKind::FireExplosion | VfxKind::UpgradeBurst | VfxKind::EnemyDeath => 12,
+            VfxKind::IceShatter | VfxKind::PortalWarp => 10,
+            VfxKind::PoisonCloud | VfxKind::SteamCloud => 9,
+            VfxKind::BuildDust => 6,
             VfxKind::ImpactSpark => 3,
             VfxKind::LightningArc => 0,
         };
-
-        let s = msg.color.to_srgba();
-        let mat = cache.color_mat(
-            &mut materials,
-            msg.color,
-            0.25,
-            0.1,
-            Some(LinearRgba::rgb(s.red * 2.4, s.green * 2.4, s.blue * 2.4)),
-        );
 
         let allowed = burst_count.min(MAX_ACTIVE_PARTICLES - current_count);
         for i in 0..allowed {
             let angle = (i as f32 / allowed.max(1) as f32) * std::f32::consts::TAU
                 + rand::random::<f32>() * 0.5;
-            let speed = (1.4 + rand::random::<f32>() * 2.6) * msg.radius.clamp(0.4, 2.5);
+            let speed = (1.5 + rand::random::<f32>() * 2.8) * msg.radius.clamp(0.5, 2.5);
             let vy = match msg.kind {
                 VfxKind::PoisonCloud | VfxKind::SteamCloud | VfxKind::BuildDust => {
-                    0.9 + rand::random::<f32>() * 1.1
+                    1.1 + rand::random::<f32>() * 1.3
                 }
                 _ => 2.2 + rand::random::<f32>() * 2.5,
             };
@@ -2362,18 +2414,23 @@ fn handle_vfx_messages(
                 _ => 8.5,
             };
             let max_timer = match msg.kind {
-                VfxKind::ImpactSpark => 0.25,
+                VfxKind::ImpactSpark => 0.28,
+                VfxKind::FireExplosion
+                | VfxKind::SteamCloud
+                | VfxKind::IceShatter
+                | VfxKind::PoisonCloud => 0.45 + rand::random::<f32>() * 0.20,
                 _ => 0.45 + rand::random::<f32>() * 0.2,
             };
             let start_scale = match msg.kind {
-                VfxKind::ImpactSpark => 0.08,
-                VfxKind::PoisonCloud | VfxKind::SteamCloud => 0.18,
-                _ => 0.13,
+                VfxKind::ImpactSpark => 0.10,
+                VfxKind::PoisonCloud | VfxKind::SteamCloud => 0.28,
+                VfxKind::FireExplosion | VfxKind::IceShatter => 0.22,
+                _ => 0.15,
             };
-            let mesh = if i % 2 == 0 {
-                cache.unit_cube.clone()
-            } else {
+            let mesh = if is_aoe_burst || i % 2 == 1 {
                 cache.unit_sphere.clone()
+            } else {
+                cache.unit_cube.clone()
             };
 
             commands.spawn((
@@ -2402,7 +2459,7 @@ fn render_lightning_arcs_and_status_rings(
     enemies: Query<(&Enemy, &StatusEffects, &GlobalTransform), Without<PendingDespawn>>,
     mut gizmos: Gizmos,
 ) {
-    let dt = time.delta_secs();
+    let dt = time.delta_secs().min(0.05);
 
     for (entity, mut arc) in &mut arcs {
         arc.timer -= dt;
@@ -2413,22 +2470,39 @@ fn render_lightning_arcs_and_status_rings(
             continue;
         }
         let alpha = (arc.timer / arc.max_timer.max(0.01)).clamp(0.0, 1.0);
-        let col = arc.color.with_alpha(alpha);
-        let segments = 5;
-        let mut prev = arc.start;
+        let outer_col = arc.color.with_alpha(alpha);
+        let inner_col = Color::srgba(0.92, 0.99, 1.0, alpha);
+        let segments = 6;
+        let dist = arc.start.distance(arc.end);
+        let jitter = (dist * 0.14).clamp(0.10, 0.42);
+        let side_dir = (arc.end - arc.start)
+            .cross(Vec3::Y)
+            .normalize_or(Vec3::X);
+
+        let mut prev_inner = arc.start;
+        let mut prev_outer = arc.start + side_dir * 0.06;
         for i in 1..=segments {
             let t = i as f32 / segments as f32;
-            let mut pt = arc.start.lerp(arc.end, t);
-            if i < segments {
-                let jitter = (arc.start.distance(arc.end) * 0.12).clamp(0.08, 0.35);
-                pt += Vec3::new(
+            let base_pt = arc.start.lerp(arc.end, t);
+            let (pt_inner, pt_outer) = if i < segments {
+                let off_a = Vec3::new(
                     (rand::random::<f32>() - 0.5) * jitter,
                     (rand::random::<f32>() - 0.5) * jitter,
                     (rand::random::<f32>() - 0.5) * jitter,
                 );
-            }
-            gizmos.line(prev, pt, col);
-            prev = pt;
+                let off_b = Vec3::new(
+                    (rand::random::<f32>() - 0.5) * jitter * 1.25,
+                    (rand::random::<f32>() - 0.5) * jitter * 1.25,
+                    (rand::random::<f32>() - 0.5) * jitter * 1.25,
+                ) + side_dir * 0.08;
+                (base_pt + off_a, base_pt + off_b)
+            } else {
+                (arc.end, arc.end)
+            };
+            gizmos.line(prev_outer, pt_outer, outer_col);
+            gizmos.line(prev_inner, pt_inner, inner_col);
+            prev_inner = pt_inner;
+            prev_outer = pt_outer;
         }
     }
 
@@ -2455,9 +2529,16 @@ fn update_particles_and_hazards(
     mut commands: Commands,
     time: Res<Time>,
     mut particles: Query<(Entity, &mut ParticleVfx, &mut Transform), Without<PendingDespawn>>,
-    mut hazards: Query<(Entity, &mut GroundHazard, &mut Transform), (Without<ParticleVfx>, Without<PendingDespawn>)>,
+    mut hazards: Query<
+        (Entity, &mut GroundHazard, &mut Transform),
+        (Without<ParticleVfx>, Without<ShockwaveRingVfx>, Without<PendingDespawn>),
+    >,
+    mut shockwaves: Query<
+        (Entity, &mut ShockwaveRingVfx, &mut Transform),
+        (Without<ParticleVfx>, Without<GroundHazard>, Without<PendingDespawn>),
+    >,
 ) {
-    let dt = time.delta_secs();
+    let dt = time.delta_secs().min(0.05);
 
     for (entity, mut p, mut tf) in &mut particles {
         p.timer -= dt;
@@ -2488,5 +2569,19 @@ fn update_particles_and_hazards(
         let pulse = 1.0 + (time.elapsed_secs() * 5.0).sin() * 0.06;
         let d = h.radius * 2.0 * pulse * (h.timer.clamp(0.0, 0.6) / 0.6).max(0.4);
         tf.scale = Vec3::new(d, 1.0, d);
+    }
+
+    for (entity, mut sw, mut tf) in &mut shockwaves {
+        sw.timer -= dt;
+        if sw.timer <= 0.0 {
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.insert(PendingDespawn);
+            }
+            continue;
+        }
+        let u = 1.0 - (sw.timer / sw.max_timer.max(0.01)).clamp(0.0, 1.0);
+        let r = sw.start_radius + (sw.end_radius - sw.start_radius) * u;
+        let thickness_y = (0.45 * (1.0 - u)).max(0.08);
+        tf.scale = Vec3::new(r, thickness_y, r);
     }
 }

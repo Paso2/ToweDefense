@@ -58,7 +58,7 @@ fn passive_income_and_banner_tick(
     wave: Res<WaveState>,
     mut economy: ResMut<EconomyState>,
 ) {
-    let real_dt = time.delta_secs();
+    let real_dt = time.delta_secs().min(0.05);
     if let Some((_, ref mut ttl)) = economy.status_banner {
         *ttl -= real_dt;
         if *ttl <= 0.0 {
@@ -371,7 +371,7 @@ fn monitor_slot_limit_and_grace(
                 volume_scale: 1.0,
             });
         }
-        let dt = time.delta_secs() * speed.multiplier();
+        let dt = time.delta_secs().min(0.05) * speed.multiplier();
         wave.grace_timer = (wave.grace_timer - dt).max(0.0);
         if wave.grace_timer <= 0.0 {
             next_state.set(AppState::GameOver);

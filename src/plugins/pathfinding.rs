@@ -672,34 +672,65 @@ fn render_path_and_range_gizmos(
     let show_ground = flow.show_path_overlay || in_build_mode;
     let show_air = flow.show_path_overlay || wave.next_wave_has_air || in_build_mode;
 
-    // 1. Ground path ribbon at y = 0.14 with animated directional chevrons.
+    // 1. Ground path ribbon at y = 0.15 with dual outer glow rails, bright core, and bold animated chevrons.
     if show_ground {
-        let (path_pts, path_color) = if in_build_mode && flow.hover_tile.is_some() {
-            if flow.hover_valid && !flow.hover_ground_path.is_empty() {
-                (&flow.hover_ground_path, Color::srgb(0.25, 0.95, 0.45))
-            } else {
-                (&flow.base_ground_path, Color::srgb(0.95, 0.22, 0.22))
-            }
+        let is_blocked_hover = in_build_mode
+            && flow.hover_tile.is_some()
+            && (!flow.hover_valid || flow.hover_ground_path.is_empty());
+
+        let path_pts = if in_build_mode
+            && flow.hover_tile.is_some()
+            && flow.hover_valid
+            && !flow.hover_ground_path.is_empty()
+        {
+            &flow.hover_ground_path
         } else {
-            (&flow.base_ground_path, Color::srgb(0.96, 0.80, 0.26))
+            &flow.base_ground_path
+        };
+
+        let (outer_color, core_color) = if is_blocked_hover {
+            (
+                Color::srgb(0.95, 0.18, 0.22),
+                Color::srgb(1.0, 0.42, 0.36),
+            )
+        } else {
+            (
+                Color::srgb(0.30, 1.0, 0.58),
+                Color::srgb(1.0, 0.92, 0.35),
+            )
         };
 
         if path_pts.len() >= 2 {
-            let y = 0.14;
+            let y_core = 0.15;
+            let y_rail = 0.14;
+            let rail_offset = 0.055;
             let phase = (time.elapsed_secs() * 2.2).fract();
             for (idx, seg) in path_pts.windows(2).enumerate() {
-                let p0 = Vec3::new(seg[0].x, y, seg[0].z);
-                let p1 = Vec3::new(seg[1].x, y, seg[1].z);
-                gizmos.line(p0, p1, path_color);
+                let p0_core = Vec3::new(seg[0].x, y_core, seg[0].z);
+                let p1_core = Vec3::new(seg[1].x, y_core, seg[1].z);
+                let dir = (p1_core - p0_core).normalize_or_zero();
+                let right = Vec3::new(-dir.z, 0.0, dir.x);
+                let side = right * rail_offset;
+
+                // Dual outer glow rails
+                let p0_rail = Vec3::new(seg[0].x, y_rail, seg[0].z);
+                let p1_rail = Vec3::new(seg[1].x, y_rail, seg[1].z);
+                gizmos.line(p0_rail + side, p1_rail + side, outer_color);
+                gizmos.line(p0_rail - side, p1_rail - side, outer_color);
+
+                // Bright center core line
+                gizmos.line(p0_core, p1_core, core_color);
 
                 if idx % 3 == 0 {
-                    let dir = (p1 - p0).normalize_or_zero();
-                    let right = Vec3::new(-dir.z, 0.0, dir.x);
                     let t = (phase + (idx as f32 * 0.17)).fract();
-                    let tip = p0.lerp(p1, t) + Vec3::Y * 0.02;
-                    let back = tip - dir * 0.22;
-                    gizmos.line(tip, back + right * 0.14, path_color);
-                    gizmos.line(tip, back - right * 0.14, path_color);
+                    let tip = p0_core.lerp(p1_core, t) + Vec3::Y * 0.03;
+                    let back = tip - dir * 0.26;
+                    gizmos.line(tip, back + right * 0.18, core_color);
+                    gizmos.line(tip, back - right * 0.18, core_color);
+                    let tip_outer = tip - dir * 0.06;
+                    let back_outer = tip_outer - dir * 0.24;
+                    gizmos.line(tip_outer, back_outer + right * 0.18, outer_color);
+                    gizmos.line(tip_outer, back_outer - right * 0.18, outer_color);
                 }
             }
         }

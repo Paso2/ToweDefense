@@ -161,8 +161,10 @@ fn smoke_test_driver(
     mut commands: Commands,
     time: Res<Time>,
     mut smoke: ResMut<SmokeTestState>,
+    mut injected_showcase: Local<bool>,
     mut flow: ResMut<FlowField>,
     mut wave: ResMut<WaveState>,
+    mut economy: ResMut<EconomyState>,
     mut selection: ResMut<SelectionState>,
     mut build_writer: MessageWriter<BuildTowerRequest>,
     mut send_wave_writer: MessageWriter<SendWaveEarlyRequest>,
@@ -170,51 +172,47 @@ fn smoke_test_driver(
     capturing: Query<Entity, With<Capturing>>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
-    // Advance smoke clock smoothly (even on slow software renderers, step >= 1/30s)
-    let step = time.delta_secs().clamp(1.0 / 60.0, 0.12);
+    // Advance smoke clock in exact lockstep with clamped simulation dt (<= 0.05s)
+    let step = time.delta_secs().min(0.05);
     smoke.elapsed += step;
 
-    // Step 1 (t >= 0.2s): Build classic serpentine maze on Lordaeron-Bastion & enable path preview
-    if !smoke.stage_01_maze_built && smoke.elapsed >= 0.2 {
+    // Step 1 (t >= 0.15s): Build a genuine WC3 serpentine maze on Lordaeron-Bastion
+    // with a bottom corridor wall at z=7 so enemies MUST weave UP -> DOWN -> UP -> DOWN -> UP!
+    if !smoke.stage_01_maze_built && smoke.elapsed >= 0.15 {
         smoke.stage_01_maze_built = true;
         flow.show_path_overlay = true;
         wave.next_wave_has_air = true;
 
-        let maze_coords = [
-            // Baffle 1 (x=6, z=0..=4)
-            TileCoord::new(6, 0),
-            TileCoord::new(6, 1),
-            TileCoord::new(6, 2),
-            TileCoord::new(6, 3),
-            TileCoord::new(6, 4),
-            // Baffle 2 (x=10, z=2..=7)
-            TileCoord::new(10, 2),
-            TileCoord::new(10, 3),
-            TileCoord::new(10, 4),
-            TileCoord::new(10, 5),
-            TileCoord::new(10, 6),
-            TileCoord::new(10, 7),
-            // Baffle 3 (x=15, z=0..=4)
-            TileCoord::new(15, 0),
-            TileCoord::new(15, 1),
-            TileCoord::new(15, 2),
-            TileCoord::new(15, 3),
-            TileCoord::new(15, 4),
-            // Baffle 4 (x=19, z=2..=7)
-            TileCoord::new(19, 2),
-            TileCoord::new(19, 3),
-            TileCoord::new(19, 4),
-            TileCoord::new(19, 5),
-            TileCoord::new(19, 6),
-            TileCoord::new(19, 7),
-            // Mid-lane maze baffles
-            TileCoord::new(12, 9),
-            TileCoord::new(12, 10),
-            TileCoord::new(12, 11),
-            TileCoord::new(17, 10),
-            TileCoord::new(17, 11),
-            TileCoord::new(17, 12),
-        ];
+        let mut maze_coords: Vec<TileCoord> = Vec::new();
+        // Horizontal lower corridor wall (z=7, x=1..=21) sealing the left gap under Spawn (1,1)
+        // so enemies MUST snake inside z=0..=6 across all 4 vertical baffles!
+        for x in 1..=21 {
+            maze_coords.push(TileCoord::new(x, 7));
+        }
+        // Alternating vertical serpentine baffles inside the z=0..=6 corridor
+        // Baffle 1: x=6, z=0..=4 (forces path DOWN around z=5..6)
+        for z in 0..=4 {
+            maze_coords.push(TileCoord::new(6, z));
+        }
+        // Baffle 2: x=10, z=2..=6 (forces path UP around z=0..1)
+        for z in 2..=6 {
+            maze_coords.push(TileCoord::new(10, z));
+        }
+        // Baffle 3: x=15, z=0..=4 (forces path DOWN around z=5..6)
+        for z in 0..=4 {
+            maze_coords.push(TileCoord::new(15, z));
+        }
+        // Baffle 4: x=19, z=2..=6 (forces path UP around z=0..1 toward CP0 at (24,2))
+        for z in 2..=6 {
+            maze_coords.push(TileCoord::new(19, z));
+        }
+        // Mid-lane serpentine baffles between CP0 -> CP1 -> CP2
+        for z in 10..=13 {
+            maze_coords.push(TileCoord::new(11, z));
+        }
+        for z in 11..=14 {
+            maze_coords.push(TileCoord::new(17, z));
+        }
 
         for coord in maze_coords {
             build_writer.write(BuildTowerRequest {
@@ -224,10 +222,10 @@ fn smoke_test_driver(
                 free: true,
             });
         }
-        info!("SmokeTest: requested serpentine maze construction");
+        info!("SmokeTest: requested true WC3 serpentine maze construction");
     }
 
-    // Screenshot 1 (t >= 2.0s): Maze + ground & air path preview
+    // Screenshot 1 (t >= 2.0s): Serpentine maze + ground & air (y=2.6) path preview
     if !smoke.stage_01_shot_taken && smoke.elapsed >= 2.0 {
         smoke.stage_01_shot_taken = true;
         info!("SmokeTest: capturing verify_01_maze.png");
@@ -236,69 +234,76 @@ fn smoke_test_driver(
             .observe(save_to_disk("verify_01_maze.png"));
     }
 
-    // Step 2 (t >= 2.5s): Build multi-faction & dual-element towers + start waves
-    if !smoke.stage_02_combat_built && smoke.elapsed >= 2.5 {
+    // Step 2 (t >= 2.4s): Place multi-faction & dual-element showcase towers + start active combat
+    if !smoke.stage_02_combat_built && smoke.elapsed >= 2.4 {
         smoke.stage_02_combat_built = true;
         flow.show_path_overlay = false;
 
-        let showcase_towers: [(TileCoord, FactionId, &str); 11] = [
-            // Elemental Circle dual elements & elements right near Spawn->Baffle 1 corridor
+        // Give economy funds so our primary showcased Fire Obelisk is paid cleanly (real sell refund)
+        economy.gold += 80;
+        economy.special_currency += 3;
+
+        // Paid T2 Fire Obelisk right at the serpentine bend (has 3 upgrades: Inferno / Steam / Plasma!)
+        build_writer.write(BuildTowerRequest {
+            coord: TileCoord::new(4, 3),
+            tower_id: "fire_obelisk".to_string(),
+            faction: FactionId::ElementalCircle,
+            free: false,
+        });
+
+        let showcase_towers: [(TileCoord, FactionId, &str); 10] = [
+            // Elemental Circle dual elements + Water around the snake killbox
             (
-                TileCoord::new(4, 2),
-                FactionId::ElementalCircle,
-                "fire_obelisk",
-            ),
-            (
-                TileCoord::new(5, 4),
+                TileCoord::new(8, 3),
                 FactionId::ElementalCircle,
                 "steam_condenser",
             ),
             (
-                TileCoord::new(7, 3),
+                TileCoord::new(8, 5),
                 FactionId::ElementalCircle,
                 "plasma_core",
             ),
             (
-                TileCoord::new(8, 2),
+                TileCoord::new(12, 2),
                 FactionId::ElementalCircle,
                 "storm_pillar",
             ),
             (
-                TileCoord::new(8, 5),
+                TileCoord::new(8, 1),
                 FactionId::ElementalCircle,
                 "water_fountain",
             ),
             // Citadel
             (
-                TileCoord::new(4, 4),
+                TileCoord::new(4, 5),
                 FactionId::Citadel,
                 "gatling_ballista",
             ),
             (
-                TileCoord::new(7, 6),
+                TileCoord::new(12, 5),
                 FactionId::Citadel,
                 "volley_bastion",
             ),
             // Dragon Clan
             (
-                TileCoord::new(8, 0),
+                TileCoord::new(12, 3),
                 FactionId::DragonClan,
                 "elder_fire_dragon",
             ),
             // Frostguard
             (
-                TileCoord::new(11, 4),
+                TileCoord::new(17, 4),
                 FactionId::Frostguard,
                 "blizzard_spire",
             ),
             // Necropolis
             (
-                TileCoord::new(11, 6),
+                TileCoord::new(17, 6),
                 FactionId::Necropolis,
                 "plague_ziggurat",
             ),
             (
-                TileCoord::new(13, 3),
+                TileCoord::new(17, 2),
                 FactionId::Necropolis,
                 "banshee_tower",
             ),
@@ -313,12 +318,43 @@ fn smoke_test_driver(
             });
         }
 
-        // Trigger Wave 1 immediately so combat is raging by t=6.0s
+        // Start Wave 1 immediately
         send_wave_writer.write(SendWaveEarlyRequest);
-        info!("SmokeTest: built multi-faction & dual-element showcase and started Wave 1");
+        info!("SmokeTest: built multi-faction & dual-element showcase and launched Wave 1");
     }
 
-    // Screenshot 2 (t >= 6.0s): Active combat with projectiles, effects & 3D HP bars
+    // Once Wave 1 is actually active, append resilient Ground + Air enemies so verify_02_combat.png
+    // captures dense multi-target combat, flying Bats (y=2.6), projectiles, lightning arcs & 3D HP bars!
+    if smoke.stage_02_combat_built && !*injected_showcase && wave.phase == WavePhase::WaveActive {
+        *injected_showcase = true;
+        let showcase_spawns: [(EnemyArchetypeId, f32, f32); 12] = [
+            (EnemyArchetypeId::StoneGolem, 560.0, 0.05),
+            (EnemyArchetypeId::BatFlyer, 360.0, 0.25),
+            (EnemyArchetypeId::SlimeSplitter, 400.0, 0.50),
+            (EnemyArchetypeId::VampireLord, 520.0, 0.75),
+            (EnemyArchetypeId::StoneGolem, 600.0, 1.00),
+            (EnemyArchetypeId::BatFlyer, 380.0, 1.25),
+            (EnemyArchetypeId::SlimeSplitter, 420.0, 1.50),
+            (EnemyArchetypeId::GoblinRaider, 260.0, 1.75),
+            (EnemyArchetypeId::StoneGolem, 620.0, 2.00),
+            (EnemyArchetypeId::BatFlyer, 400.0, 2.25),
+            (EnemyArchetypeId::VampireLord, 540.0, 2.50),
+            (EnemyArchetypeId::SlimeSplitter, 440.0, 2.75),
+        ];
+        for (archetype, hp, delay) in showcase_spawns {
+            wave.spawn_queue.push(PendingSpawn {
+                archetype,
+                delay_remaining: delay,
+                spawn_index: 0,
+                hp_override: Some(hp),
+                bounty_override: Some(8),
+                wave_number: 1,
+            });
+        }
+        wave.wave_spawn_done = false;
+    }
+
+    // Screenshot 2 (t >= 6.0s): Active Ground + Air combat with projectiles, lightning & 3D HP bars
     if !smoke.stage_02_shot_taken && smoke.elapsed >= 6.0 {
         smoke.stage_02_shot_taken = true;
         info!("SmokeTest: capturing verify_02_combat.png");
@@ -327,21 +363,22 @@ fn smoke_test_driver(
             .observe(save_to_disk("verify_02_combat.png"));
     }
 
-    // Step 3 (t >= 6.6s): Select a dual-element tower to verify contextual WC3 bottom HUD
+    // Step 3 (t >= 6.6s): Select the Fire Obelisk (shows live damage/kills, non-zero sell refund,
+    // AND populates the 3-column [Q][W][E] Command Card with Inferno / Steam [Dual] / Plasma [Dual]!)
     if !smoke.stage_03_ui_selected && smoke.elapsed >= 6.6 {
         smoke.stage_03_ui_selected = true;
         if let Some((entity, _)) = towers
             .iter()
-            .find(|(_, t)| t.id == "plasma_core" || t.id == "storm_pillar")
+            .find(|(_, t)| t.id == "fire_obelisk")
             .or_else(|| towers.iter().next())
         {
             selection.selected_towers = vec![entity];
             selection.selected_enemy = None;
-            info!("SmokeTest: selected showcase tower for UI verification");
+            info!("SmokeTest: selected Fire Obelisk for WC3 Inspector + 3-column Command Card UI");
         }
     }
 
-    // Screenshot 3 (t >= 8.0s): WC3 HUD with >= 80% free playfield
+    // Screenshot 3 (t >= 8.0s): WC3 HUD with >= 80% free playfield, umlauts, inspector & 3-col Q/W/E
     if !smoke.stage_03_shot_taken && smoke.elapsed >= 8.0 {
         smoke.stage_03_shot_taken = true;
         info!("SmokeTest: capturing verify_03_ui.png");

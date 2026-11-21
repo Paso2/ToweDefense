@@ -32,9 +32,14 @@ const TEXT_GOLD: Color = Color::srgb(0.96, 0.81, 0.34);
 const TEXT_CYAN: Color = Color::srgb(0.42, 0.88, 1.0);
 const TEXT_CRIMSON: Color = Color::srgb(1.0, 0.32, 0.32);
 
-const MINIMAP_W: f32 = 160.0;
+const MINIMAP_W: f32 = 182.0;
 const MINIMAP_H: f32 = 104.0;
 const MAX_MINIMAP_DOTS: usize = 96;
+
+const EMBEDDED_FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/LiberationSans-Regular.ttf");
+
+#[derive(Resource)]
+struct UiFontHandle(Handle<Font>);
 
 pub struct UiPlugin;
 
@@ -42,6 +47,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HudDynamicState>()
             .init_resource::<SetupSelectionState>()
+            .add_systems(Startup, setup_ui_font)
             // Screen setup / teardown
             .add_systems(OnEnter(AppState::MainMenu), spawn_main_menu)
             .add_systems(OnExit(AppState::MainMenu), despawn_marked::<MainMenuUi>)
@@ -65,6 +71,7 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
+                    apply_embedded_ui_font,
                     update_button_visuals,
                     refresh_fraction_select_ui.run_if(in_state(AppState::FractionSelect)),
                     refresh_pause_menu_ui.run_if(in_state(AppState::Paused)),
@@ -88,10 +95,28 @@ impl Plugin for UiPlugin {
                     update_command_card,
                     update_command_tooltip,
                     spawn_and_animate_popups,
+                    apply_embedded_ui_font,
                 )
                     .in_set(GameSet::VfxUiSet)
                     .run_if(in_state(AppState::Playing)),
             );
+    }
+}
+
+fn setup_ui_font(mut commands: Commands, mut fonts: ResMut<Assets<Font>>) {
+    let handle = fonts.add(Font::from_bytes(EMBEDDED_FONT_BYTES.to_vec()));
+    commands.insert_resource(UiFontHandle(handle));
+}
+
+fn apply_embedded_ui_font(
+    ui_font: Option<Res<UiFontHandle>>,
+    mut query: Query<&mut TextFont, Added<TextFont>>,
+) {
+    let Some(font_res) = ui_font else {
+        return;
+    };
+    for mut tf in &mut query {
+        tf.font = font_res.0.clone().into();
     }
 }
 
@@ -220,8 +245,6 @@ struct HudBannerText;
 
 // Minimap refs
 #[derive(Component)]
-struct HudMinimapCanvas;
-#[derive(Component)]
 struct HudMinimapTilesLayer;
 #[derive(Component)]
 struct HudMinimapDot;
@@ -290,6 +313,29 @@ struct HudPopupNode {
 // ============================================================================
 // Helper Constructors (Bevy 0.20 Native UI APIs)
 // ============================================================================
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    let char_count = text.chars().count();
+    if char_count <= max_chars {
+        return text.to_string();
+    }
+    let keep = max_chars.saturating_sub(3);
+    let mut out: String = text.chars().take(keep).collect();
+    out.push_str("...");
+    out
+}
+
+fn compact_command_name(name: &str, max_chars: usize) -> String {
+    let trimmed = name
+        .split(['-', ' '])
+        .next()
+        .unwrap_or(name);
+    if trimmed.chars().count() >= 3 && trimmed.chars().count() <= max_chars.max(13) {
+        trimmed.to_string()
+    } else {
+        truncate_chars(name, max_chars)
+    }
+}
 
 fn ui_text(content: impl Into<String>, size: f32, color: Color) -> (Text, TextFont, TextColor) {
     (
@@ -1028,7 +1074,7 @@ fn ensure_hud_spawned(
                 b.spawn((HudBannerText, ui_text("", 12.0, TEXT_GOLD)));
             });
 
-            // 4. BOTTOM-LEFT COMPACT MINIMAP PANEL (175 x 138 px)
+            // 4. BOTTOM-LEFT COMPACT MINIMAP PANEL (196 x 142 px)
             root.spawn((
                 UiHoverCapturePanel,
                 Hovered::default(),
@@ -1036,9 +1082,10 @@ fn ensure_hud_spawned(
                     position_type: PositionType::Absolute,
                     left: px(8),
                     bottom: px(8),
-                    width: px(175),
-                    height: px(138),
+                    width: px(196),
+                    height: px(142),
                     padding: UiRect::all(px(6)),
+                    overflow: Overflow::clip(),
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::SpaceBetween,
                     border: UiRect::all(px(1.5)),
@@ -1050,7 +1097,6 @@ fn ensure_hud_spawned(
             ))
             .with_children(|mm| {
                 mm.spawn((
-                    HudMinimapCanvas,
                     Node {
                         width: px(MINIMAP_W),
                         height: px(MINIMAP_H),
@@ -1107,13 +1153,23 @@ fn ensure_hud_spawned(
                 });
 
                 mm.spawn((
-                    HudNextWaveText,
-                    ui_text("Nächste: W1 Goblin-Vorhut", 11.0, TEXT_PRIMARY),
-                    TextLayout::new(Justify::Left, LineBreak::NoWrap),
-                ));
+                    Node {
+                        width: percent(100),
+                        overflow: Overflow::clip(),
+                        ..default()
+                    },
+                    Pickable::IGNORE,
+                ))
+                .with_children(|footer| {
+                    footer.spawn((
+                        HudNextWaveText,
+                        ui_text("Nächste: Goblin-Vorhut", 10.5, TEXT_PRIMARY),
+                        TextLayout::new(Justify::Left, LineBreak::NoWrap),
+                    ));
+                });
             });
 
-            // 5. BOTTOM-CENTER CONTEXTUAL INSPECTOR (340 x 108 px, Display::None when nothing selected)
+            // 5. BOTTOM-CENTER CONTEXTUAL INSPECTOR (412 x 116 px, Display::None when nothing selected)
             root.spawn((
                 HudInspectorPanel,
                 UiHoverCapturePanel,
@@ -1121,11 +1177,13 @@ fn ensure_hud_spawned(
                 Node {
                     position_type: PositionType::Absolute,
                     left: percent(50),
-                    margin: UiRect::left(px(-170)),
+                    margin: UiRect::left(px(-206)),
                     bottom: px(8),
-                    width: px(340),
-                    height: px(108),
-                    padding: UiRect::all(px(8)),
+                    width: px(412),
+                    height: px(116),
+                    padding: UiRect::axes(px(10), px(8)),
+                    row_gap: px(4),
+                    overflow: Overflow::clip(),
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::SpaceBetween,
                     border: UiRect::all(px(1.5)),
@@ -1139,19 +1197,23 @@ fn ensure_hud_spawned(
             .with_children(|insp| {
                 insp.spawn((
                     HudInspectorTitleText,
-                    ui_text("Turm-Inspektor", 14.0, TEXT_GOLD),
+                    ui_text("Turm-Inspektor", 13.5, TEXT_GOLD),
+                    TextLayout::new(Justify::Left, LineBreak::NoWrap),
                 ));
                 insp.spawn((
                     HudInspectorStatsText,
-                    ui_text("Schaden: 0 | Tempo: 1.0/s | Reichw: 4.0", 12.0, TEXT_PRIMARY),
+                    ui_text("Schaden: 0 | Tempo: 1.00/s | DPS: 0 | Reichw: 4.0", 11.5, TEXT_PRIMARY),
+                    TextLayout::new(Justify::Left, LineBreak::NoWrap),
                 ));
                 insp.spawn((
                     HudInspectorSubText,
                     ui_text("Kills: 0 | Ziel: Boden + Luft", 11.0, TEXT_MUTED),
+                    TextLayout::new(Justify::Left, LineBreak::NoWrap),
                 ));
 
                 insp.spawn(Node {
                     width: percent(100),
+                    margin: UiRect::top(px(2)),
                     flex_direction: FlexDirection::Row,
                     justify_content: JustifyContent::SpaceBetween,
                     column_gap: px(8),
@@ -1166,8 +1228,8 @@ fn ensure_hud_spawned(
                         UiAction::CycleTargetPriority,
                         ButtonStyleMeta::default(),
                         Node {
-                            width: percent(52),
-                            height: px(26),
+                            width: percent(50),
+                            height: px(28),
                             border: UiRect::all(px(1.5)),
                             border_radius: BorderRadius::all(px(4)),
                             justify_content: JustifyContent::Center,
@@ -1196,8 +1258,8 @@ fn ensure_hud_spawned(
                             ..default()
                         },
                         Node {
-                            width: percent(46),
-                            height: px(26),
+                            width: percent(48),
+                            height: px(28),
                             border: UiRect::all(px(1.5)),
                             border_radius: BorderRadius::all(px(4)),
                             justify_content: JustifyContent::Center,
@@ -1223,8 +1285,8 @@ fn ensure_hud_spawned(
                 Node {
                     position_type: PositionType::Absolute,
                     right: px(8),
-                    bottom: px(152),
-                    width: px(260),
+                    bottom: px(156),
+                    width: px(286),
                     padding: UiRect::axes(px(8), px(5)),
                     border: UiRect::all(px(1)),
                     border_radius: BorderRadius::all(px(4)),
@@ -1243,7 +1305,7 @@ fn ensure_hud_spawned(
                 ));
             });
 
-            // 7. BOTTOM-RIGHT COMPACT COMMAND CARD (232 x 138 px)
+            // 7. BOTTOM-RIGHT COMPACT 3-COLUMN COMMAND CARD (286 x 142 px)
             root.spawn((
                 UiHoverCapturePanel,
                 Hovered::default(),
@@ -1251,9 +1313,10 @@ fn ensure_hud_spawned(
                     position_type: PositionType::Absolute,
                     right: px(8),
                     bottom: px(8),
-                    width: px(232),
-                    height: px(138),
+                    width: px(286),
+                    height: px(142),
                     padding: UiRect::all(px(6)),
+                    overflow: Overflow::clip(),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(4),
                     border: UiRect::all(px(1.5)),
@@ -2143,12 +2206,15 @@ fn update_minimap(
     mut next_wave_q: Query<&mut Text, With<HudNextWaveText>>,
 ) {
     if let Ok(mut t) = next_wave_q.single_mut() {
-        let air_tag = if wave.next_wave_has_air {
-            " [LUFT]"
-        } else {
-            ""
-        };
-        **t = format!("Nächste:{air_tag} {}", wave.next_wave_title);
+        let air_tag = if wave.next_wave_has_air { " [L]" } else { "" };
+        let short_title = wave
+            .next_wave_title
+            .split_once(": ")
+            .map(|(_, rest)| rest)
+            .unwrap_or(&wave.next_wave_title);
+        let next_num = (wave.current_wave + 1).min(wave.max_standard_waves.max(wave.current_wave + 1));
+        let raw_line = format!("W{next_num}{air_tag}: {short_title}");
+        **t = truncate_chars(&raw_line, 26);
     }
 
     if grid.width <= 0 || grid.height <= 0 {
@@ -2491,15 +2557,32 @@ fn update_command_card(
                 let affordable = economy.gold >= ucfg.gold_cost
                     && economy.special_currency >= ucfg.special_cost;
                 let cost_str = if ucfg.special_cost > 0 {
-                    format!("{}g + {}{}", ucfg.gold_cost, ucfg.special_cost, currency_short)
+                    format!("{}g+{}", ucfg.gold_cost, ucfg.special_cost)
                 } else {
                     format!("{}g", ucfg.gold_cost)
                 };
                 let is_dual = ucfg.description.contains("Dual");
-                let badge = if is_dual { " [Dual]" } else { "" };
-                let label = format!("[{}] {}{}\n{}", ucfg.hotkey, ucfg.name, badge, cost_str);
+                let badge = if is_dual { " *" } else { "" };
+                let short_name = compact_command_name(&ucfg.name, 10);
+                let label = format!(
+                    "[{}] {}{}\n{}{}",
+                    ucfg.hotkey,
+                    short_name,
+                    badge,
+                    cost_str,
+                    if ucfg.special_cost > 0 {
+                        currency_short
+                    } else {
+                        ""
+                    }
+                );
+                let tooltip_cost = if ucfg.special_cost > 0 {
+                    format!("{}g + {}{}", ucfg.gold_cost, ucfg.special_cost, currency_short)
+                } else {
+                    format!("{}g", ucfg.gold_cost)
+                };
                 let tooltip = format!(
-                    "{} ({cost_str}) | {} | DPS {:.0}\n{}",
+                    "{} ({tooltip_cost}) | {} | DPS {:.0}\n{}",
                     ucfg.name,
                     ucfg.target_mask.label(),
                     ucfg.damage * ucfg.attack_speed,
@@ -2510,8 +2593,8 @@ fn update_command_card(
                     UiAction::UpgradeTowerCmd(upg_id),
                     label,
                     10.5,
-                    px(106),
-                    px(48),
+                    px(86),
+                    px(50),
                     ButtonStyleMeta {
                         tooltip: Some(tooltip),
                         selected_highlight: false,
@@ -2541,12 +2624,13 @@ fn update_command_card(
                 let affordable = economy.gold >= rcfg.gold_cost
                     && economy.special_currency >= rcfg.special_cost;
                 let cost_str = if rcfg.special_cost > 0 {
-                    format!("{}g + {}{}", rcfg.gold_cost, rcfg.special_cost, currency_short)
+                    format!("{}g+{}{}", rcfg.gold_cost, rcfg.special_cost, currency_short)
                 } else {
                     format!("{}g", rcfg.gold_cost)
                 };
                 let active = selection.build_tower_id.as_deref() == Some(root_id.as_str());
-                let label = format!("[{}] {}\n{}", rcfg.hotkey, rcfg.name, cost_str);
+                let short_name = compact_command_name(&rcfg.name, 10);
+                let label = format!("[{}] {}\n{}", rcfg.hotkey, short_name, cost_str);
                 let tooltip = format!(
                     "{} ({cost_str}) | {}\n{}",
                     rcfg.name,
@@ -2558,8 +2642,8 @@ fn update_command_card(
                     UiAction::BuildTowerCmd(root_id.clone()),
                     label,
                     10.5,
-                    px(106),
-                    px(48),
+                    px(86),
+                    px(50),
                     ButtonStyleMeta {
                         tooltip: Some(tooltip),
                         selected_highlight: active,
@@ -2571,10 +2655,10 @@ fn update_command_card(
                 spawn_wc3_button(
                     grid,
                     UiAction::CancelBuildMode,
-                    "[Esc] Abbruch",
+                    "[Esc]\nAbbruch",
                     10.5,
-                    px(106),
-                    px(32),
+                    px(86),
+                    px(50),
                     ButtonStyleMeta {
                         accent: Some(TEXT_MUTED),
                         ..default()

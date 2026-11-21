@@ -72,7 +72,7 @@ fn wave_progression_and_spawning(
     mut sfx_writer: MessageWriter<PlaySfxMsg>,
     mut popup_writer: MessageWriter<SpawnPopupMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     let early_requested = !early_requests.is_empty();
     early_requests.clear();
 
@@ -331,7 +331,7 @@ fn boss_abilities_system(
     mut vfx_writer: MessageWriter<SpawnVfxMsg>,
     mut popup_writer: MessageWriter<SpawnPopupMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     if dt <= 0.0 || wave.phase != WavePhase::WaveActive {
         return;
     }
@@ -479,7 +479,7 @@ fn enemy_movement_system(
     mut vfx_writer: MessageWriter<SpawnVfxMsg>,
     mut sfx_writer: MessageWriter<PlaySfxMsg>,
 ) {
-    let dt = time.delta_secs() * speed.multiplier();
+    let dt = time.delta_secs().min(0.05) * speed.multiplier();
     if dt <= 0.0 || grid.width <= 0 || grid.height <= 0 {
         return;
     }

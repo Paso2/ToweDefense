@@ -1,0 +1,21 @@
+pub mod audio;
+pub mod combat;
+pub mod economy;
+pub mod map;
+pub mod pathfinding;
+pub mod persistence;
+pub mod tower;
+pub mod ui;
+pub mod visuals;
+pub mod wave;
+
+pub use audio::AudioPlugin;
+pub use combat::CombatPlugin;
+pub use economy::EconomyPlugin;
+pub use map::MapPlugin;
+pub use pathfinding::PathfindingPlugin;
+pub use persistence::PersistencePlugin;
+pub use tower::TowerPlugin;
+pub use ui::UiPlugin;
+pub use visuals::VisualsPlugin;
+pub use wave::WavePlugin;

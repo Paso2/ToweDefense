@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+*.pdb
+verify_*.png
+screenshot-*.png
+save/
+portable.flag

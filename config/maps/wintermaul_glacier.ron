@@ -1,0 +1,42 @@
+MapConfig(
+    id: WintermaulGlacier,
+    display_name: "Wintermaul-Gletscher",
+    biome: WintermaulIce,
+    width: 30,
+    height: 22,
+    spawns: [
+        MapZone(
+            origin: TileCoord(x: 2, z: 1),
+            width: 2,
+            height: 2,
+        ),
+        MapZone(
+            origin: TileCoord(x: 26, z: 1),
+            width: 2,
+            height: 2,
+        ),
+    ],
+    checkpoints: [
+        MapZone(
+            origin: TileCoord(x: 14, z: 9),
+            width: 2,
+            height: 2,
+        ),
+        MapZone(
+            origin: TileCoord(x: 14, z: 16),
+            width: 2,
+            height: 2,
+        ),
+    ],
+    goal: MapZone(
+        origin: TileCoord(x: 14, z: 19),
+        width: 2,
+        height: 2,
+    ),
+    blocked_tiles: [
+        TileCoord(x: 9, z: 6),
+        TileCoord(x: 20, z: 6),
+        TileCoord(x: 9, z: 13),
+        TileCoord(x: 20, z: 13),
+    ],
+)

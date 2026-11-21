@@ -1,0 +1,42 @@
+MapConfig(
+    id: LordaeronBastion,
+    display_name: "Lordaeron-Bastion",
+    biome: LordaeronGrass,
+    width: 28,
+    height: 20,
+    spawns: [
+        MapZone(
+            origin: TileCoord(x: 1, z: 1),
+            width: 2,
+            height: 2,
+        ),
+    ],
+    checkpoints: [
+        MapZone(
+            origin: TileCoord(x: 24, z: 2),
+            width: 2,
+            height: 2,
+        ),
+        MapZone(
+            origin: TileCoord(x: 2, z: 9),
+            width: 2,
+            height: 2,
+        ),
+        MapZone(
+            origin: TileCoord(x: 24, z: 15),
+            width: 2,
+            height: 2,
+        ),
+    ],
+    goal: MapZone(
+        origin: TileCoord(x: 1, z: 17),
+        width: 2,
+        height: 2,
+    ),
+    blocked_tiles: [
+        TileCoord(x: 13, z: 5),
+        TileCoord(x: 14, z: 5),
+        TileCoord(x: 13, z: 13),
+        TileCoord(x: 14, z: 13),
+    ],
+)

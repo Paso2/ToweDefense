@@ -1,0 +1,294 @@
+WaveTableConfig(
+    waves: [
+        WaveDefConfig(
+            wave_number: 1,
+            title: "Goblin-Vorhut",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: GoblinRaider, count: 10, hp_override: Some(45.0), bounty_override: Some(4), spawn_interval: 0.75, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 2,
+            title: "Ratten-Schwarm",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: RatSwarm, count: 22, hp_override: Some(32.0), bounty_override: Some(2), spawn_interval: 0.35, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 3,
+            title: "Goblin-Plünderer",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: GoblinRaider, count: 14, hp_override: Some(85.0), bounty_override: Some(5), spawn_interval: 0.65, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 4,
+            title: "Steingolem-Vorhut",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 8, hp_override: Some(220.0), bounty_override: Some(9), spawn_interval: 1.15, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 5,
+            title: "BOSS: Rattenkönig",
+            is_boss_wave: true,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: RatSwarm, count: 12, hp_override: Some(55.0), bounty_override: Some(3), spawn_interval: 0.35, start_delay: 0.0),
+                WaveGroupConfig(archetype: BossRatKing, count: 1, hp_override: Some(1350.0), bounty_override: Some(45), spawn_interval: 1.0, start_delay: 2.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 6,
+            title: "LUFT: Fledermäuse",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: BatFlyer, count: 14, hp_override: Some(120.0), bounty_override: Some(6), spawn_interval: 0.65, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 7,
+            title: "Schleim-Splitter",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: SlimeSplitter, count: 12, hp_override: Some(190.0), bounty_override: Some(8), spawn_interval: 0.85, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 8,
+            title: "Gepanzerte Goblins",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: GoblinRaider, count: 16, hp_override: Some(280.0), bounty_override: Some(7), spawn_interval: 0.55, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 9,
+            title: "Ratten-Flut",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: RatSwarm, count: 34, hp_override: Some(115.0), bounty_override: Some(3), spawn_interval: 0.25, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 10,
+            title: "BOSS: Uralter Schleim-Titan",
+            is_boss_wave: true,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: BossSlimeTitan, count: 1, hp_override: Some(4200.0), bounty_override: Some(75), spawn_interval: 1.0, start_delay: 0.0),
+                WaveGroupConfig(archetype: SlimeSplitter, count: 6, hp_override: Some(320.0), bounty_override: Some(8), spawn_interval: 0.9, start_delay: 1.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 11,
+            title: "Golem-Marsch",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 12, hp_override: Some(680.0), bounty_override: Some(11), spawn_interval: 0.95, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 12,
+            title: "LUFT: Nachtschwingen",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: BatFlyer, count: 18, hp_override: Some(420.0), bounty_override: Some(8), spawn_interval: 0.50, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 13,
+            title: "Schleim-Woge",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: SlimeSplitter, count: 16, hp_override: Some(620.0), bounty_override: Some(10), spawn_interval: 0.70, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 14,
+            title: "Goblin- & Ratten-Sturm",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: GoblinRaider, count: 14, hp_override: Some(850.0), bounty_override: Some(9), spawn_interval: 0.55, start_delay: 0.0),
+                WaveGroupConfig(archetype: RatSwarm, count: 22, hp_override: Some(310.0), bounty_override: Some(4), spawn_interval: 0.28, start_delay: 1.2),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 15,
+            title: "BOSS: Blutgraf & Vampire",
+            is_boss_wave: true,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: VampireLord, count: 14, hp_override: Some(820.0), bounty_override: Some(12), spawn_interval: 0.70, start_delay: 0.0),
+                WaveGroupConfig(archetype: BossBloodCount, count: 1, hp_override: Some(9500.0), bounty_override: Some(90), spawn_interval: 1.0, start_delay: 3.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 16,
+            title: "Golem-Phalanx",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 14, hp_override: Some(1550.0), bounty_override: Some(14), spawn_interval: 0.85, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 17,
+            title: "Schleim-Sturm",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: SlimeSplitter, count: 18, hp_override: Some(1300.0), bounty_override: Some(12), spawn_interval: 0.60, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 18,
+            title: "Vampir-Vorhut",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: VampireLord, count: 18, hp_override: Some(1750.0), bounty_override: Some(14), spawn_interval: 0.65, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 19,
+            title: "LUFT: Fledermaus-Schwarm",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: BatFlyer, count: 28, hp_override: Some(950.0), bounty_override: Some(8), spawn_interval: 0.35, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 20,
+            title: "BOSS (LUFT): Obsidianschwinge & Gargoyles",
+            is_boss_wave: true,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: Gargoyle, count: 12, hp_override: Some(2400.0), bounty_override: Some(18), spawn_interval: 0.85, start_delay: 0.0),
+                WaveGroupConfig(archetype: BossObsidianWing, count: 1, hp_override: Some(16000.0), bounty_override: Some(110), spawn_interval: 1.0, start_delay: 2.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 21,
+            title: "Gemischte Belagerung I",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 12, hp_override: Some(3100.0), bounty_override: Some(16), spawn_interval: 0.80, start_delay: 0.0),
+                WaveGroupConfig(archetype: BatFlyer, count: 16, hp_override: Some(1450.0), bounty_override: Some(10), spawn_interval: 0.45, start_delay: 1.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 22,
+            title: "Blut- & Schleimflut",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: VampireLord, count: 16, hp_override: Some(3200.0), bounty_override: Some(16), spawn_interval: 0.65, start_delay: 0.0),
+                WaveGroupConfig(archetype: SlimeSplitter, count: 14, hp_override: Some(2600.0), bounty_override: Some(14), spawn_interval: 0.65, start_delay: 1.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 23,
+            title: "LUFT: Steinschwingen",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: Gargoyle, count: 18, hp_override: Some(3600.0), bounty_override: Some(18), spawn_interval: 0.70, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 24,
+            title: "Gemischte Belagerung II",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 14, hp_override: Some(4600.0), bounty_override: Some(18), spawn_interval: 0.75, start_delay: 0.0),
+                WaveGroupConfig(archetype: Gargoyle, count: 12, hp_override: Some(3900.0), bounty_override: Some(18), spawn_interval: 0.75, start_delay: 1.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 25,
+            title: "DOPPEL-BOSS: Koloss & Blut-Gargoyle",
+            is_boss_wave: true,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: BossGolemColossus, count: 1, hp_override: Some(26000.0), bounty_override: Some(80), spawn_interval: 1.0, start_delay: 0.0),
+                WaveGroupConfig(archetype: BossObsidianWing, count: 1, hp_override: Some(18000.0), bounty_override: Some(80), spawn_interval: 1.0, start_delay: 2.0),
+                WaveGroupConfig(archetype: VampireLord, count: 10, hp_override: Some(3800.0), bounty_override: Some(16), spawn_interval: 0.70, start_delay: 2.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 26,
+            title: "Elite-Vampir-Ritter",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: VampireLord, count: 24, hp_override: Some(5600.0), bounty_override: Some(18), spawn_interval: 0.55, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 27,
+            title: "Mega-Schleime & Schwarm",
+            is_boss_wave: false,
+            has_air: false,
+            groups: [
+                WaveGroupConfig(archetype: SlimeSplitter, count: 20, hp_override: Some(6200.0), bounty_override: Some(18), spawn_interval: 0.60, start_delay: 0.0),
+                WaveGroupConfig(archetype: RatSwarm, count: 20, hp_override: Some(2400.0), bounty_override: Some(8), spawn_interval: 0.25, start_delay: 1.5),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 28,
+            title: "LUFT: Frost-Gargoyles",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: Gargoyle, count: 22, hp_override: Some(7400.0), bounty_override: Some(20), spawn_interval: 0.60, start_delay: 0.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 29,
+            title: "Vorhut des Dreadlords",
+            is_boss_wave: false,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: StoneGolem, count: 14, hp_override: Some(9200.0), bounty_override: Some(20), spawn_interval: 0.70, start_delay: 0.0),
+                WaveGroupConfig(archetype: VampireLord, count: 12, hp_override: Some(7800.0), bounty_override: Some(20), spawn_interval: 0.60, start_delay: 1.0),
+                WaveGroupConfig(archetype: Gargoyle, count: 10, hp_override: Some(8200.0), bounty_override: Some(20), spawn_interval: 0.70, start_delay: 2.0),
+            ],
+        ),
+        WaveDefConfig(
+            wave_number: 30,
+            title: "ENDBOSS: Aether-Dreadlord",
+            is_boss_wave: true,
+            has_air: true,
+            groups: [
+                WaveGroupConfig(archetype: BossAetherDreadlord, count: 1, hp_override: Some(68000.0), bounty_override: Some(150), spawn_interval: 1.0, start_delay: 0.0),
+                WaveGroupConfig(archetype: Gargoyle, count: 6, hp_override: Some(6500.0), bounty_override: Some(18), spawn_interval: 1.2, start_delay: 2.0),
+                WaveGroupConfig(archetype: VampireLord, count: 6, hp_override: Some(6000.0), bounty_override: Some(18), spawn_interval: 1.2, start_delay: 3.0),
+            ],
+        ),
+    ],
+    endless_hp_growth: 1.18,
+    endless_armor_per_wave: 3.0,
+    endless_speed_per_wave: 0.015,
+    endless_speed_cap: 1.45,
+    endless_bounty_growth: 1.05,
+)

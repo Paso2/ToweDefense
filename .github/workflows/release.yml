@@ -1,0 +1,45 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows x86_64 (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run unit tests
+        run: cargo test
+
+      - name: Build optimized Windows Release .exe
+        run: cargo build --release
+
+      - name: Package portable folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/AethermaulTD
+          Copy-Item target/release/aethermaul_td.exe dist/AethermaulTD/aethermaul_td.exe
+          Copy-Item -Recurse config dist/AethermaulTD/config
+          Copy-Item README.md dist/AethermaulTD/README.md
+          Copy-Item GAME_SPEC.md dist/AethermaulTD/GAME_SPEC.md
+          Compress-Archive -Path dist/AethermaulTD/* -DestinationPath dist/AethermaulTD-Windows-x64.zip
+
+      - name: Upload Windows .exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AethermaulTD-Windows-x64
+          path: |
+            target/release/aethermaul_td.exe
+            dist/AethermaulTD-Windows-x64.zip
